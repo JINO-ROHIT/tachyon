@@ -1,5 +1,7 @@
 .python-version
 
 __pycache__/
+models/
+
 play.ipynb
 

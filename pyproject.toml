@@ -6,4 +6,5 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "huggingface-hub>=1.2.1",
+    "numpy>=2.3.5",
 ]

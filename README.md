@@ -2,6 +2,21 @@
 
 Tachyon is a C++ inference engine for LLMs that run on CPU. This library is a collection of all the modern LLM architectures written from scratch and designed to run on consumer hardware.
 
+### Setup
+
+1. install the virtual environment.
+
+```
+uv sync
+```
+
+2. first convert the weights from safetensors.
+
+```
+python3 scripts/convert_weight.py
+```
+
+
 
 Roadmap
 - [ ] Implement gpt, llama, mistral, qwen backbone, atleast one multimodal llm
