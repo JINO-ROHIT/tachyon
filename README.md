@@ -1,5 +1,15 @@
 ## Tachyon
 
+```
+ ████████╗ █████╗  ██████╗██╗  ██╗██╗   ██╗ ██████╗ ███╗   ██╗
+ ╚══██╔══╝██╔══██╗██╔════╝██║  ██║╚██╗ ██╔╝██╔═══██╗████╗  ██║
+    ██║   ███████║██║     ███████║ ╚████╔╝ ██║   ██║██╔██╗ ██║
+    ██║   ██╔══██║██║     ██╔══██║  ╚██╔╝  ██║   ██║██║╚██╗██║
+    ██║   ██║  ██║╚██████╗██║  ██║   ██║   ╚██████╔╝██║ ╚████║
+    ╚═╝   ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═══╝
+           >>> Faster Than Light >>>
+```
+
 Tachyon is a C++ inference engine for LLMs that run on CPU. This library is a collection of all the modern LLM architectures written from scratch and designed to run on consumer hardware.
 
 ### Setup
