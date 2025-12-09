@@ -1,0 +1,9 @@
+[project]
+name = "tachyon"
+version = "0.1.0"
+description = "Tachyon is a C++ inference engine for LLMs that run on CPU"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "huggingface-hub>=1.2.1",
+]
