@@ -13,7 +13,7 @@ uv sync
 2. first convert the weights from safetensors.
 
 ```
-python3 scripts/convert_weight.py
+python3 scripts/convert_weight.py <Qwen/Qwen3-0.6B>
 ```
 
 
