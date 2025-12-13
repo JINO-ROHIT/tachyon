@@ -75,4 +75,30 @@ class Tensor{
             _alloc(i*j);
         }
 
+        // [] indexing operator 
+        // TO-DO look at how to extend to the other datatypes
+        float &operator[] (int i) const {
+            assert(N == 1);
+
+            if(i >= shape[0]){
+                std::cout << "tensor out of bound" << std::endl;
+            }
+
+            return data[i];
+        }
+
+        float &operator[] (int i, int j) const {
+            assert(N == 2);
+
+            if(i >= shape[0]){
+                std::cout << "tensor out of bound" << std::endl;
+            }
+
+            if(j >= shape[1]){
+                std::cout << "tensor out of bound" << std::endl;
+            }
+            
+
+            return data[i * shape[1] + j];
+        }
 };
