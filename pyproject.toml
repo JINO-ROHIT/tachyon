@@ -8,3 +8,8 @@ dependencies = [
     "huggingface-hub>=1.2.1",
     "numpy>=2.3.5",
 ]
+
+[dependency-groups]
+dev = [
+    "torch>=2.9.1",
+]
