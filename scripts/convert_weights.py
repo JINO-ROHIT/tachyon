@@ -17,6 +17,7 @@ class WeightMapper:
     def __init__(self, model_name: str, output_name: str = "model.tach"):
         self.model_name = model_name
         self.model_path = None
+        self.config = None
 
         self.m = None
         self.metadata = {}
@@ -37,6 +38,7 @@ class WeightMapper:
 
     def _download_model(self):
         self.model_path = snapshot_download(self.model_name)
+        self.config = f"{self.model_path}/config.json"
     
     def _calculate_offsets(self, layer_name):
         offs = self.metadata[layer_name]['data_offsets']
@@ -117,6 +119,7 @@ class WeightMapper:
         
         self.bin_file.close()
         self._save_index()
+        self._add_config_info()
         return self.bin_offset
     
     def _save_index(self):
@@ -124,6 +127,22 @@ class WeightMapper:
         with open(index_filename, 'w') as f:
             json.dump(self.layer_index, f, indent=2)
         print(f"Saved layer index to {index_filename}")
+    
+    ## write this better or combine w index?
+    def _add_config_info(self):
+        index_filename = self.output_name.replace('.tach', '_index.json')
+
+        with open(self.config, 'r') as f:
+            config_data = json.load(f)
+
+        with open(index_filename, 'r') as f:
+            data = json.load(f)
+        
+        data.update(config_data)
+
+        with open(index_filename, 'w') as f:
+            json.dump(data, f, indent=2)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(

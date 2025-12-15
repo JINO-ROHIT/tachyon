@@ -20,11 +20,15 @@ Tachyon is a C++ inference engine for LLMs that run on CPU. This library is a co
 uv sync
 ```
 
-2. first convert the weights from safetensors.
+2. first convert the weights from safetensors to tach format.
 
 ```
 python3 scripts/convert_weight.py <Qwen/Qwen3-0.6B>
 ```
+
+After this step you get two files -
+- a .tach format model weight file.
+- a metadata.json containing layer wise size, offsets and the config for the llm.
 
 
 
