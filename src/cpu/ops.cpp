@@ -3,10 +3,18 @@
 
 #include <cmath>
 
+//TO-DO later use the config in metadata json instead of hardcoded config params
+
 //activation functions
 
-float gelu(float &in){
-    return 0.5f * in * (1.0f + tanhf(0.797885f * (in + 0.044715f * in * in * in)));
+void gelu(const Tensor<1> &in, Tensor<1> &out){
+    float* data = (float*) in.data;
+    float* o = (float*) out.data;
+
+    for(int i = 0; i < in.shape[0]; i++){
+        float x = data[i];
+        o[i] = 0.5f * x * (1.0f + tanhf(0.797885f * (x + 0.044715f * x * x * x)));
+    }
 }
 
 float silu(float &in){
@@ -25,6 +33,25 @@ float sdot(const float* a, const float* b, int n) {
 
 
 // layer specific operations
+
+void softmax(const float* input, float* output, int n) {
+    float max_val = input[0];
+    for (int i = 1; i < n; ++i) {
+        if (input[i] > max_val) {
+            max_val = input[i];
+        }
+    }
+
+    float sum = 0.0f;
+    for (int i = 0; i < n; ++i) {
+        output[i] = expf(input[i] - max_val);
+        sum += output[i];
+    }
+
+    for (int i = 0; i < n; ++i) {
+        output[i] /= sum;
+    }
+}
 
 // check if we need freq config? 
 void precompute_rope_params(int rotary_dim, float theta, int ctx_length, float* cos_cache, float* sin_cache){ // ctx_length * (rotary_dim / 2)
@@ -104,3 +131,5 @@ void layernorm(const Tensor<1> &in, Tensor<1>&out, Tensor<1> weight, Tensor<1> b
     }
 
 }
+
+// grouped query attention
