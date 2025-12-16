@@ -84,7 +84,7 @@ class Tensor{
                 std::cout << "tensor out of bound" << std::endl;
             }
 
-            return data[i];
+            return ((float*)data)[i];
         }
 
         float &operator[] (int i, int j) const {
@@ -97,8 +97,8 @@ class Tensor{
             if(j >= shape[1]){
                 std::cout << "tensor out of bound" << std::endl;
             }
-            
 
-            return data[i * shape[1] + j];
+
+            return ((float*)data)[i * shape[1] + j];
         }
 };
