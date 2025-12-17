@@ -1,5 +1,8 @@
+#pragma once
+
 #include <assert.h>
 #include <cstdio>
+#include <iostream>
 
 enum Dtype {
     f32,
@@ -87,7 +90,8 @@ class Tensor{
             return ((float*)data)[i];
         }
 
-        float &operator[] (int i, int j) const {
+        // for multi dims (or else use c++23)
+        float &at(int i, int j) const {
             assert(N == 2);
 
             if(i >= shape[0]){
