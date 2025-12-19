@@ -2,6 +2,9 @@
 #include "include/cpu/ops.h"
 
 #include <cmath>
+#include <vector>
+#include <algorithm>
+#include <limits>
 
 //TO-DO later use the config in metadata json instead of hardcoded config params
 
@@ -132,4 +135,16 @@ void layernorm(const Tensor<1> &in, Tensor<1>&out, Tensor<1> weight, Tensor<1> b
 
 }
 
-// grouped query attention
+void mlp(const Tensor<1> &in, const Tensor<2> &mlp_weight, Tensor<1> &out, float bias){
+    const int hidden_size = in.shape[0];
+    const int output_size = out.shape[0];
+
+    float* x = (float*)in.data;
+    float* weight = (float*) mlp_weight.data;
+    float* y = (float*) out.data;
+
+    for(int i = 0; i < output_size; i++){
+        const float* weight_row = &weight[i * hidden_size];
+        y[i] = sdot(x, weight_row, hidden_size) + bias;
+    }
+}
