@@ -1,3 +1,5 @@
+#pragma once
+
 #include "tensor.h"
 
 int sample_greedy(const Tensor<1>& logits, float temperature);
