@@ -146,70 +146,54 @@ void mlp(const Tensor<1> &in, const Tensor<2> &mlp_weight, Tensor<1> &out, float
         y[i] = sdot(x, weight_row, hidden_size) + bias;
     }
 }
+// softmax(q * kT / sqrt(dim)) * V
+void simple_mha(
+    const Tensor<1>& input,
+    const Tensor<2>& query_weight,
+    const Tensor<2>& key_seq, // already projected
+    const Tensor<2>& value_seq, // already projected
+    Tensor<1>& out,
+    int num_heads,
+    int head_dim) {
+
+    const int emb_dim = input.shape[0];
+    const int seq_len = key_seq.shape[0];
+
+    assert(emb_dim == num_heads * head_dim);
 
 
-// softmax(q * kT / sqrt(dim)) * V (TO-DO verify correctness)
-void mha(const Tensor<1> &input, Tensor<2> &kv_cache, const Tensor<2> &query_weight, const Tensor<2> &key_weight, const Tensor<2> &value_weight, Tensor<2> &out, const int num_heads, const int head_dim, const int emb_dim, const int pos){
-
-    float* data = (float*) input.data;
-    float* q_weight_ptr = (float*) query_weight.data; float* k_weight_ptr = (float*) key_weight.data; float* v_weight_ptr = (float*) value_weight.data;
-    float* o = (float*) out.data;
-
-    Tensor<1> q_proj(emb_dim); Tensor<1> k_proj(emb_dim); Tensor<1> v_proj(emb_dim);
-
-    for(int d = 0; d < emb_dim; d++){
-        q_proj[d] = sdot(data, q_weight_ptr, emb_dim);
-        k_proj[d] = sdot(data, k_weight_ptr, emb_dim);
-        v_proj[d] = sdot(data, v_weight_ptr, emb_dim);
-        q_weight_ptr += emb_dim; k_weight_ptr += emb_dim; v_weight_ptr += emb_dim;
+    Tensor<1> q_proj(emb_dim);
+    for (int d = 0; d < emb_dim; ++d) {
+        q_proj[d] = sdot((float*)input.data, (float*)query_weight.data + d * emb_dim, emb_dim);
     }
 
-    float* kv_cache_ptr = (float*)kv_cache.data + pos * kv_cache.shape[1];
-    float* k_proj_data = (float*)k_proj.data; float* v_proj_data = (float*)v_proj.data;
+    const float scale = 1.0f / sqrtf(static_cast<float>(head_dim));
+    std::vector<float> scores(seq_len);
+    std::vector<float> weights(seq_len);
 
-    // copy k
-    for(int i = 0; i < emb_dim; i++){
-        kv_cache_ptr[i] = k_proj_data[i];
-    }
-    // copy v
-    for(int i = 0; i < emb_dim; i++){
-        kv_cache_ptr[emb_dim + i] = v_proj_data[i];
-    }
+    std::fill((float*)out.data, (float*)out.data + emb_dim, 0.0f);
 
-    Tensor<1> attn_out_buf(emb_dim);
-    std::fill((float*)attn_out_buf.data, (float*)attn_out_buf.data + emb_dim, 0.0f);
+    for (int h = 0; h < num_heads; ++h) {
+        int head_offset = h * head_dim;
 
-    const float attn_scale = 1.0f / sqrtf(static_cast<float>(head_dim));
-    std::vector<float> attention_scores(pos + 1);
-    std::vector<float> attention_weights(pos + 1);
+        const float* query_head = (float*)q_proj.data + head_offset;
+        float* out_head = (float*)out.data + head_offset;
 
-    for(int head = 0; head < num_heads; head++){
-        int head_offset = head * head_dim;
-
-        float* query_head = (float*)q_proj.data + head_offset;
-        float* output_head = (float*)attn_out_buf.data + head_offset;
-
-        for(int prev_pos = 0; prev_pos <= pos; prev_pos++){
-            const float* key_head = (const float*)kv_cache.data + prev_pos * kv_cache.shape[1] + head_offset;
-            float score = sdot(query_head, key_head, head_dim) * attn_scale;
-            attention_scores[prev_pos] = score;
+        for (int i = 0; i < seq_len; ++i) {
+            const float* key_head = (float*)key_seq.data + i * emb_dim + head_offset;
+            float score = sdot(query_head, key_head, head_dim) * scale;
+            scores[i] = score;
         }
 
-        softmax(attention_scores.data(), attention_weights.data(), pos + 1);
+        softmax(scores.data(), weights.data(), seq_len);
 
-        for(int prev_pos = 0; prev_pos <= pos; prev_pos++){
-            float attention_weight = attention_weights[prev_pos];
-            const float* value_head = (const float*)kv_cache.data + prev_pos * kv_cache.shape[1] + emb_dim + head_offset;
-
-            for(int d = 0; d < head_dim; d++){
-                output_head[d] += attention_weight * value_head[d];
+        for (int i = 0; i < seq_len; ++i) {
+            float weight = weights[i];
+            const float* value_head = (float*)value_seq.data + i * emb_dim + head_offset;
+            for (int d = 0; d < head_dim; ++d) {
+                out_head[d] += weight * value_head[d];
             }
         }
-    }
-
-    float* attn_buf = (float*)attn_out_buf.data;
-    for(int d = 0; d < emb_dim; d++){
-        o[d] = attn_buf[d];
     }
 }
 
