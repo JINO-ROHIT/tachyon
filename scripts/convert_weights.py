@@ -66,7 +66,8 @@ class WeightMapper:
         
         # Store layer metadata
         self.layer_index[layer_name] = {
-            'offset': self._get_hex(self.bin_offset),
+            #'offset': self._get_hex(self.bin_offset),
+            'offset': self.bin_offset,
             'size': size,
             'padded_size': padded_size,
             'shape': shape,
@@ -93,7 +94,8 @@ class WeightMapper:
         padded_size = self._store_weights(layer_name, transposed_buffer)
         
         self.layer_index[layer_name] = {
-            'offset': self._get_hex(self.bin_offset),
+            #'offset': self._get_hex(self.bin_offset),
+            'offset': self.bin_offset,
             'size': len(transposed_buffer),
             'padded_size': padded_size,
             'shape': list(reversed(shape)), 
@@ -152,24 +154,18 @@ class WeightMapper:
         print(f"Saved layer index to {index_filename}")
     
     def _add_config_info(self):
-        index_filename = self.output_name.replace('.tach', '_index.json')
+        config_filename = self.output_name.replace('.tach', '_config.json')
 
         with open(self.config, 'r') as f:
             config_data = json.load(f)
 
-        with open(index_filename, 'r') as f:
-            data = json.load(f)
-
-        # convert each config value to its own dictionary for better JSON/nlohmann compatibility
         config_dict = {}
         for key, value in config_data.items():
-            config_dict[key] = {"value": value}
+            config_dict[key] = value
 
-        data["config"] = config_dict
-
-        with open(index_filename, 'w') as f:
-            json.dump(data, f, indent=2)
-        print(f"Added config information to {index_filename}")
+        with open(config_filename, 'w') as f:
+            json.dump(config_dict, f, indent=2)
+        print(f"Added config information to {config_filename}")
 
 
 if __name__ == '__main__':
