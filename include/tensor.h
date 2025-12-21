@@ -47,6 +47,7 @@ class Tensor{
         }
         Tensor(void* _data, int i, Dtype _dtype){
             assert(N == 1);
+            shape[0] = i;
             data = _data;
             dtype = _dtype;
             alloc = nullptr;
