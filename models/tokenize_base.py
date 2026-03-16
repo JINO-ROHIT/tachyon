@@ -3,7 +3,6 @@
 
 from transformers import AutoTokenizer
 
-
 class Tokenizer:
     def __init__(self, model: str):
         self.tokenizer = AutoTokenizer.from_pretrained(model, use_fast=True)
