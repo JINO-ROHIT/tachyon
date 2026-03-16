@@ -9,8 +9,8 @@ class TransformerBlock(nn.Module):
         super().__init__()
         self.att = GroupedQueryAttention(d_in=2048, d_out=2048, num_heads=32, num_kv_groups=8, dtype=torch.bfloat16)
         self.ff = FeedForward(emb_dim=2048, hidden_dim=8192, dtype=torch.bfloat16)
-        self.norm1 = nn.RMSNorm(emb_dim=2048, eps=1e-5, dtype=torch.bfloat16)
-        self.norm2 = nn.RMSNorm(emb_dim=2048, eps=1e-5, dtype=torch.bfloat16)
+        self.norm1 = nn.RMSNorm(normalized_shape=2048, eps=1e-5, dtype=torch.bfloat16)
+        self.norm2 = nn.RMSNorm(normalized_shape=2048, eps=1e-5, dtype=torch.bfloat16)
 
     def forward(self, x, mask, cos, sin):
         shortcut = x
