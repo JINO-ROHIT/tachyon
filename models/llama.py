@@ -10,8 +10,8 @@ class Llama3Model(nn.Module):
 
         self.embed_tokens = nn.Embedding(num_embeddings=128_256, embedding_dim=2048, dtype=torch.bfloat16)
         self.trf_blocks = nn.ModuleList([TransformerBlock() for _ in range(16)])
-        self.final_norm = nn.RMSNorm(normalized_shape=2048, eps=1e-5, dtype=torch.bfloat16)
-        self.out_head = nn.Linear(in_features=2048, out_features=128_256, bias=False, dtype=torch.bfloat16)
+        self.post_attention_layernorm = nn.RMSNorm(normalized_shape=2048, eps=1e-5, dtype=torch.bfloat16)
+        self.out_head = nn.Linear(in_features=2048, out_features=128_256, bias=False, dtype=torch.bfloat16) # this is the weight tied matrix w embed tokens
 
         cos, sin = compute_rope_params(head_dim=2048 // 32, theta_base=500_000, context_length=131_072,)
         self.register_buffer("cos", cos, persistent=False)
@@ -28,6 +28,6 @@ class Llama3Model(nn.Module):
         
         for block in self.trf_blocks:
             x = block(x, mask, self.cos, self.sin)
-        x = self.final_norm(x)
+        x = self.post_attention_layernorm(x)
         logits = self.out_head(x.to(torch.bfloat16))
         return logits

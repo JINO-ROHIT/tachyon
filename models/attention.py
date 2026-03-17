@@ -13,20 +13,20 @@ class GroupedQueryAttention(nn.Module):
         self.num_heads = num_heads
         self.head_dim = d_out // num_heads
 
-        self.W_key = nn.Linear(d_in, num_kv_groups * self.head_dim, bias=False, dtype=dtype)
-        self.W_value = nn.Linear(d_in, num_kv_groups * self.head_dim, bias=False, dtype=dtype)
+        self.k_proj = nn.Linear(d_in, num_kv_groups * self.head_dim, bias=False, dtype=dtype)
+        self.v_proj = nn.Linear(d_in, num_kv_groups * self.head_dim, bias=False, dtype=dtype)
         self.num_kv_groups = num_kv_groups
         self.group_size = num_heads // num_kv_groups
 
-        self.W_query = nn.Linear(d_in, d_out, bias=False, dtype=dtype)
-        self.out_proj = nn.Linear(d_out, d_out, bias=False, dtype=dtype)
+        self.q_proj = nn.Linear(d_in, d_out, bias=False, dtype=dtype)
+        self.o_proj = nn.Linear(d_out, d_out, bias=False, dtype=dtype)
 
     def forward(self, x, mask, cos, sin):
         b, num_tokens, d_in = x.shape
 
-        queries = self.W_query(x) 
-        keys = self.W_key(x) 
-        values = self.W_value(x) 
+        queries = self.q_proj(x) 
+        keys = self.k_proj(x) 
+        values = self.v_proj(x) 
 
         queries = queries.view(b, num_tokens, self.num_heads, self.head_dim)
         keys = keys.view(b, num_tokens, self.num_kv_groups, self.head_dim)
@@ -55,5 +55,5 @@ class GroupedQueryAttention(nn.Module):
         assert keys.shape[-1] == self.head_dim
         context_vec = (attn_weights @ values).transpose(1, 2)
         context_vec = context_vec.reshape(b, num_tokens, self.d_out)
-        context_vec = self.out_proj(context_vec)
+        context_vec = self.o_proj(context_vec)
         return context_vec

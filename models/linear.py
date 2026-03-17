@@ -6,12 +6,12 @@ import torch.nn as nn
 class FeedForward(nn.Module):
     def __init__(self, emb_dim: int = 2048, hidden_dim: int = 8192, dtype: torch.dtype = torch.bfloat16):
         super().__init__()
-        self.fc1 = nn.Linear(emb_dim, hidden_dim, dtype=dtype, bias=False)
-        self.fc2 = nn.Linear(emb_dim, hidden_dim, dtype=dtype, bias=False)
-        self.fc3 = nn.Linear(hidden_dim, emb_dim, dtype=dtype, bias=False)
+        self.gate_proj = nn.Linear(emb_dim, hidden_dim, bias=False)
+        self.up_proj   = nn.Linear(emb_dim, hidden_dim, bias=False)
+        self.down_proj = nn.Linear(hidden_dim, emb_dim, bias=False)
 
     def forward(self, x: torch.Tensor):
-        x_fc1 = self.fc1(x)
-        x_fc2 = self.fc2(x)
+        x_fc1 = self.gate_proj(x)
+        x_fc2 = self.up_proj(x)
         x = nn.functional.silu(x_fc1) * x_fc2 
-        return self.fc3(x)
+        return self.down_proj(x)
