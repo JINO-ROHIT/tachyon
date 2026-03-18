@@ -32,6 +32,7 @@ python3 benchmark.py
 | implementation | tokens generated | time taken | tok/s |
 |---|---|---|---|
 | naive torch | 3031 | 233.171 s | 13 |
+| naive torch with kv cache| 3200 | 37.771 s | 84.72 |
 
 
 ### to-do
@@ -39,7 +40,7 @@ python3 benchmark.py
 - [x] implement llama 3 family model.
 - [x] make it into a serving engine.
 - [x] write a benchmark script and check latency and throughput.
-- [ ] add kv cache.
+- [x] add kv cache.
 - [ ] continous batching
 - [ ] paged attention
 - [ ] prefix caching

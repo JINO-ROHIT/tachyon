@@ -3,7 +3,6 @@ import torch.nn as nn
 
 from .rope import compute_rope_params
 from .block import TransformerBlock
-from .cache import Cache # lazy import?
 
 class Llama3Model(nn.Module):
     def __init__(self):
@@ -18,24 +17,21 @@ class Llama3Model(nn.Module):
         self.register_buffer("cos", cos, persistent=False)
         self.register_buffer("sin", sin, persistent=False)
 
-        self.current_pos = 0  # track current position in KV cache, better way to do this?
+        self.current_pos = 0  # how many tokens the model has cached already?
 
-    def forward(self, token_ids, use_cache = True):
+    def forward(self, token_ids, cache = None):
         tok_embeds = self.embed_tokens(token_ids)
         x = tok_embeds
         
         num_tokens = x.shape[1]
         
-        if use_cache:
-            cache = Cache(n_layers=16)
+        if cache is not None:
             pos_start = self.current_pos
-            pos_end = pos_start + num_tokens
-            mask = torch.triu(torch.ones(pos_end, pos_end, device = x.device, dtype = torch.bool), diagonal = 1)[pos_start:pos_end, :pos_end]
         else:
             pos_start = 0 
-            mask = torch.triu(torch.ones(num_tokens, num_tokens, device = x.device, dtype = torch.bool), diagonal = 1)
-        
-         # (1, 1, num_tokens, num_tokens) to broadcast across batch and heads
+
+        pos_end = pos_start + num_tokens
+        mask = torch.triu(torch.ones(pos_end, pos_end, device = x.device, dtype = torch.bool), diagonal = 1)[pos_start:pos_end, :pos_end]
         mask = mask[None, None, :, :]
 
         for i, block in enumerate(self.layers):
@@ -45,6 +41,9 @@ class Llama3Model(nn.Module):
                                      cache = blk_cache)
             if cache is not None:
                 cache.update(i, new_blk_cache)
+        
+        if cache is not None:
+            self.current_pos += num_tokens
 
         x = self.norm(x)
         logits = self.out_head(x.to(torch.bfloat16))
