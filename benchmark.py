@@ -49,7 +49,7 @@ def run_benchmark(
     print(f"total requests: {n_requests}")
     print(f"total tokens:    {total_tokens}")
     print(f"total time:      {total_time:.3f}s")
-    print(f"average speed:  {total_tokens / total_time:.2f} toks/s")
+    print(f"throughput:  {total_tokens / total_time:.2f} toks/s")
     print(f"{'=' * 60}")
 
 
