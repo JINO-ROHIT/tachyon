@@ -22,11 +22,11 @@ class TransformerBlock(nn.Module):
     def forward(self, x, mask, cos, sin):
         shortcut = x
         x = self.input_layernorm(x)
-        x = self.att(x, mask, cos, sin)
+        x = self.self_attn(x, mask, cos, sin)
         x = x + shortcut
 
         shortcut = x
         x = self.post_attention_layernorm(x)
-        x = self.ff(x)
+        x = self.mlp(x)
         x = x + shortcut
         return x
