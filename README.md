@@ -14,10 +14,33 @@ hf_hub_download(
     )
 ```
 
+2. invoke the engine.
+
+```
+from tachyon.engine.llm import Engine
+tokens = engine.generate(prompt, max_tokens=max_tokens, temperature=0.0)
+print(tokens)
+```
+
+3. benchmark script
+
+```
+python3 benchmark.py
+```
+
+### current benchmarks
+| implementation | tokens generated | time taken | tok/s |
+|---|---|---|---|
+| naive torch | 3031 | 233.171 s | 13 |
+
+
 ### to-do
 
 - [x] implement llama 3 family model.
-- [ ] make it into a serving engine.
-- [ ] write a benchmark script and check latency and throughput.
+- [x] make it into a serving engine.
+- [x] write a benchmark script and check latency and throughput.
 - [ ] add kv cache.
-- [ ] keep scaling with more inferencing techniques.
+- [ ] continous batching
+- [ ] paged attention
+- [ ] prefix caching
+- [ ] more techniques
