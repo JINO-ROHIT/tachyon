@@ -16,7 +16,7 @@ hf_hub_download(
 
 ### to-do
 
-- [ ] implement llama 3 family model.
+- [x] implement llama 3 family model.
 - [ ] make it into a serving engine.
 - [ ] write a benchmark script and check latency and throughput.
 - [ ] add kv cache.
