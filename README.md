@@ -18,8 +18,8 @@ hf_hub_download(
 
 ```
 from tachyon.engine.llm import Engine
-tokens = engine.generate(prompt, max_tokens=max_tokens, temperature=0.0)
-print(tokens)
+response = engine.generate(prompt, max_tokens=100, temperature=0.1)
+print(response)
 ```
 
 3. benchmark script
@@ -28,11 +28,11 @@ print(tokens)
 python3 benchmark.py
 ```
 
-### current benchmarks
+### current benchmarks(rtx 4060 ti 16GB)
 | implementation | tokens generated | time taken | tok/s |
 |---|---|---|---|
-| naive torch | 3031 | 233.171 s | 13 |
-| naive torch with kv cache| 3200 | 37.771 s | 84.72 |
+| naive torch | 3031 | 233.171 s | 13 tok/s |
+| naive torch with kv cache| 3200 | 37.771 s | 84.72 tok/s |
 
 
 ### to-do
