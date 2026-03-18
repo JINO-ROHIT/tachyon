@@ -41,9 +41,7 @@ def run_benchmark(
         total_tokens += max_tokens
         total_time += elapsed
 
-        print(
-            f"req {i + 1:3d} | input: {input_len:4d} words | time: {elapsed:6.3f}s | speed: {max_tokens / elapsed:6.1f} toks/s"
-        )
+        print(f"req {i + 1:3d} | input: {input_len:4d} words | time: {elapsed:6.3f}s | speed: {max_tokens / elapsed:6.1f} toks/s")
 
     print(f"\n{'=' * 60}")
     print(f"total requests: {n_requests}")

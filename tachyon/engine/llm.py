@@ -3,6 +3,7 @@ from transformers import AutoTokenizer
 
 from tachyon.models import Llama3Model
 from tachyon.utils import load_weights
+from tachyon.models.cache import Cache # lazy import?
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 class Engine:
@@ -11,9 +12,6 @@ class Engine:
         load_weights(self.model, model_name.split("/")[-1]) # loads in place
         self.model = self.model.to(device)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-    
-    # def load(self, model_path: str):
-    #     self.model = load_weights(self.model, model_path)
 
     def sample(self, logits, temperature: float=0.0):
         if temperature > 0.0:
@@ -26,30 +24,35 @@ class Engine:
         
         return next_token
 
-    def generate(self, prompt: str, max_tokens: int=100, temperature: float=0.0):
+    def generate(self, prompt: str, max_tokens: int = 100, temperature: float = 0.0):
+        cache = Cache(n_layers=16)
+        self.model.current_pos = 0  # reset position for each new generation
 
-        ## prefill phase
-        tokens = torch.tensor(self.tokenizer.encode(prompt)).unsqueeze(0).to(device) # for batch dim for single prompt
+        # prefill
+        tokens = torch.tensor(self.tokenizer.encode(prompt)).unsqueeze(0).to(device)
         with torch.no_grad():
-                logits = self.model(tokens)
-        logits = logits[:, -1, :]
-
-        next_token = self.sample(logits, temperature)
-        tokens = torch.cat((tokens, next_token), dim=1)
-
-        ## decode phase
-        for _ in range(max_tokens - 1): # minus 1
-            with torch.no_grad():
-                logits = self.model(tokens)
-            logits = logits[:, -1, :]
-
-            next_token = self.sample(logits, temperature)
-            tokens = torch.cat((tokens, next_token), dim=1)
+            logits = self.model(tokens, cache=cache)
         
-        flat = tokens.squeeze(0)  # remove batch dimension
-        return self.tokenizer.decode(flat.tolist())
+        next_token = self.sample(logits[:, -1, :], temperature)
+        
+        # decode only feed ONE token at a time, cache does the rest
+        generated = [next_token.item()]
+        for _ in range(max_tokens - 1):
+            with torch.no_grad():
+                logits = self.model(next_token, cache=cache)
+            
+            next_token = self.sample(logits[:, -1, :], temperature)
+            generated.append(next_token.item())
+
+            if next_token.item() == self.tokenizer.eos_token_id:
+                break
+
+        prompt_ids = tokens.squeeze(0).tolist()
+        return self.tokenizer.decode(prompt_ids + generated)
 
 if __name__ == '__main__':
     engine = Engine("meta-llama/Llama-3.2-1B-Instruct")
     toks = engine.generate("hey man", 50)
+    print(toks)
     toks = engine.generate("whats good homie?", 50)
+    print(toks)
