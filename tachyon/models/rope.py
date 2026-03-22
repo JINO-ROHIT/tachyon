@@ -8,7 +8,7 @@ def compute_rope_params(head_dim: int, theta_base: int=10_000, context_length: i
     angles = positions.unsqueeze(1) * inv_freq.unsqueeze(0) 
     angles = torch.cat([angles, angles], dim=1)
 
-    cos = torch.cos(angles)
+    cos = torch.cos(angles) # (context_len, head_dim)
     sin = torch.sin(angles)
     return cos, sin
 
