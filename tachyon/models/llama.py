@@ -19,29 +19,30 @@ class Llama3Model(nn.Module):
 
         self.current_pos = 0  # how many tokens the model has cached already?
 
-    def forward(self, token_ids, cache = None):
+    def forward(self, token_ids, cache=None, start_pos=None):
         tok_embeds = self.embed_tokens(token_ids)
         x = tok_embeds
-        
+
         num_tokens = x.shape[1]
-        
-        if cache is not None:
+
+        #TO-DO - come back to this and make it nicer
+        if start_pos is not None:
+            pos_start = start_pos
+        elif cache is not None:
             pos_start = self.current_pos
         else:
-            pos_start = 0 
+            pos_start = 0
 
         pos_end = pos_start + num_tokens
-        mask = torch.triu(torch.ones(pos_end, pos_end, device = x.device, dtype = torch.bool), diagonal = 1)[pos_start:pos_end, :pos_end]
+        mask = torch.triu(torch.ones(pos_end, pos_end, device=x.device, dtype=torch.bool), diagonal=1)[pos_start:pos_end, :pos_end]
         mask = mask[None, None, :, :]
 
         for i, block in enumerate(self.layers):
             blk_cache = cache.get(i) if cache else None
-            x, new_blk_cache = block(x, mask, self.cos, self.sin,
-                                     start_pos = pos_start,
-                                     cache = blk_cache)
+            x, new_blk_cache = block(x, mask, self.cos, self.sin, start_pos=pos_start, cache=blk_cache)
             if cache is not None:
                 cache.update(i, new_blk_cache)
-        
+                
         if cache is not None:
             self.current_pos += num_tokens
 
