@@ -23,7 +23,9 @@ def generate_requests(n_requests):
 
 
 def benchmark_sequential(engine, requests):
+    print("\n" + "=" * 60)
     print("\nsequential benchmark\n")
+    print("\n" + "=" * 60)
 
     total_tokens = 0
     total_time = 0.0
@@ -51,7 +53,9 @@ def benchmark_sequential(engine, requests):
 
 
 def benchmark_batched(engine, requests):
+    print("\n" + "=" * 60)
     print("\nbatching benchmark\n")
+    print("\n" + "=" * 60)
 
     prompts = [p for p, _ in requests]
 
@@ -89,9 +93,7 @@ def run_benchmark(n_requests, model_name="meta-llama/Llama-3.2-1B-Instruct"):
 
     benchmark_batched(engine, requests)
 
-    print("\n" + "=" * 60)
-    print("Benchmark complete")
-    print("=" * 60)
+    print("\nBenchmark complete")
 
 
 if __name__ == "__main__":

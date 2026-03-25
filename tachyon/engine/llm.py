@@ -69,33 +69,34 @@ class Engine:
             request.kv_cache = None
 
         with torch.no_grad():
-            logits = self.model(tokens, cache=request.kv_cache, start_pos=0)
+            logits = self.model(tokens, caches=[request.kv_cache], start_positions=[0])
 
         next_token = self.sample(logits[:, -1, :], request.temperature)
         request.tokens.append(next_token.item())
 
         request.cache_pos = len(prompt_tokens)
         request.is_prefill = False
-
-    def decode(self, request: Request):
-        """the decode step"""
-        previous_token = torch.tensor([[request.tokens[-1]]], device=device)
-        if request.kv_cache is not None:
-            with torch.no_grad():
-                logits = self.model(previous_token, cache=request.kv_cache, start_pos=request.cache_pos)
+    
+    def decode_batch(self, requests: List[Request]):
+        """the decode step for a batch of requests in a single forward pass."""
+        # stack the last token of each request: (B, 1)
+        tokens = torch.tensor([[r.tokens[-1]] for r in requests], device=device)
+        caches = [r.kv_cache for r in requests]
+        start_positions = [r.cache_pos for r in requests]
+ 
+        with torch.no_grad():
+            logits = self.model(tokens, caches=caches, start_positions=start_positions)
+        last_logits = logits[:, -1, :]
+ 
+        next_tokens = torch.stack([self.sample(last_logits[i:i+1], requests[i].temperature).squeeze() for i in range(len(requests))]) 
+ 
+        for i, request in enumerate(requests):
             request.cache_pos += 1
-        else:  # if no cache, take the prefill and append to each decode and then pass the whole thing each timestep
-            full_seq = request.prompt_tokens + request.tokens
-            tokens = torch.tensor(full_seq).unsqueeze(0).to(device)
-            with torch.no_grad():
-                logits = self.model(tokens, cache=None, start_pos=0)
-
-        next_token = self.sample(logits[:, -1, :], request.temperature)
-        request.tokens.append(next_token.item())
-
-        if (next_token.item() == self.tokenizer.eos_token_id or len(request.tokens) >= request.max_tokens):  # maybe this should be in prefill also as a common exit method?
-            request.is_completed = True
-            request.response = self.tokenizer.decode(request.tokens) # see if we can stream this later on
+            tok = next_tokens[i].item()
+            request.tokens.append(tok)
+            if tok == self.tokenizer.eos_token_id or len(request.tokens) >= request.max_tokens:
+                request.is_completed = True
+                request.response = self.tokenizer.decode(request.tokens)
 
     def _get_next_batch(self):
         self.current_batch = [_req for _req in self.current_batch if not _req.is_completed]  # in the current batch keep the ones not completed
@@ -107,16 +108,21 @@ class Engine:
         return self.current_batch
 
     def generate(self):
-        """the generation method"""
         self.current_batch = self._get_next_batch()
         if not self.current_batch:
             return False
-
-        for request in self.current_batch:
-            if request.is_prefill:
-                self.prefill(request)
-            else:
-                self.decode(request)
+ 
+        prefill_requests = [r for r in self.current_batch if r.is_prefill]
+        decode_requests  = [r for r in self.current_batch if not r.is_prefill]
+ 
+        # prefill individually 
+        for request in prefill_requests:
+            self.prefill(request)
+ 
+        # decode in one batched forward pass
+        if decode_requests:
+            self.decode_batch(decode_requests)
+ 
         return True
     
     def generate_text(self, prompts: Union[str, List[str]], max_tokens: int = 100, temperature: float = 0.1):
@@ -142,11 +148,11 @@ if __name__ == "__main__":
     engine = Engine("meta-llama/Llama-3.2-1B-Instruct")
     print(engine.generate_text("Explain AGI"))
 
-    outputs = engine.generate_text([
-        "Explain AGI",
-        "What is vLLM?",
-        "Tell me about SGLang"
-    ])
+    # outputs = engine.generate_text([
+    #     "Explain AGI",
+    #     "What is vLLM?",
+    #     "Tell me about SGLang"
+    # ])
 
-    for o in outputs:
-        print(o)
+    # for o in outputs:
+    #     print(o)
