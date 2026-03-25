@@ -42,8 +42,13 @@ python3 benchmark.py
 | implementation | tokens generated | time taken | tok/s |
 |---|---|---|---|
 | naive torch | 3031 | 233.171 s | 13 tok/s |
-| naive torch with kv cache| 3200 | 37.771 s | 84.72 tok/s |
+| naive torch with kv cache | 3200 | 37.771 s | 84.72 tok/s |
+| static batching | 31309 | 369.081 s | 84.83 tok/s |
+| continuous batching (bs=10) | 30600 | 111.657 s | 274.05 tok/s |
+| continuous batching (bs=30) | 29000 | 89.755 s | 323.10 tok/s |
+| continuous batching (bs=50) | 29800 | 87.442 s | 340.80 tok/s |
 
+![stats](./assets/stats.png)
 
 ### to-do
 
@@ -51,7 +56,8 @@ python3 benchmark.py
 - [x] make it into a serving engine.
 - [x] write a benchmark script and check latency and throughput.
 - [x] add kv cache.
-- [ ] continous batching
+- [x] continous batching
+- [ ] test the effect of torch compile 
 - [ ] paged attention
 - [ ] prefix caching
 - [ ] more techniques

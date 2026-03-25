@@ -13,14 +13,14 @@ class TransformerBlock(nn.Module):
         self.input_layernorm = nn.RMSNorm(normalized_shape=2048, eps=1e-5, dtype=torch.bfloat16)
         self.post_attention_layernorm = nn.RMSNorm(normalized_shape=2048, eps=1e-5, dtype=torch.bfloat16)
 
-    def forward(self, x, mask, cos, sin, start_pos, cache):
+    def forward(self, x, mask, cos, sin, start_positions, caches):
         shortcut = x
         x = self.input_layernorm(x)
-        x, next_cache = self.self_attn(x, mask, cos, sin, start_pos, cache)
+        x, next_caches = self.self_attn(x, mask, cos, sin, start_positions, caches)
         x = x + shortcut
 
         shortcut = x
         x = self.post_attention_layernorm(x)
         x = self.mlp(x)
         x = x + shortcut
-        return x, next_cache
+        return x, next_caches

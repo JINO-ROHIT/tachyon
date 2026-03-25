@@ -4,6 +4,14 @@ from glob import glob
 import torch
 from safetensors import safe_open
 
+
+def pad_to(t, length):
+    """pad from the last dimension in pairs of 2"""
+    pad = length - t.shape[2]
+    if pad == 0:
+        return t
+    return torch.nn.functional.pad(t, (0, 0, 0, pad))
+
 def load_weights(model, path: str):
     """copy original weights from safetensor to the model we have"""
     for file in glob(os.path.join(path, "*.safetensors")):

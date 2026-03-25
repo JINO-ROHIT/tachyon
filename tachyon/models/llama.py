@@ -1,3 +1,5 @@
+from typing import List, Optional, Tuple
+
 import torch
 import torch.nn as nn
 
@@ -17,35 +19,28 @@ class Llama3Model(nn.Module):
         self.register_buffer("cos", cos, persistent=False)
         self.register_buffer("sin", sin, persistent=False)
 
-        self.current_pos = 0  # how many tokens the model has cached already?
+    def forward(self, token_ids, caches: List[Optional["Cache"]], start_positions: List[int]):
+        batch_size, num_tokens = token_ids.shape
 
-    def forward(self, token_ids, cache=None, start_pos=None):
-        tok_embeds = self.embed_tokens(token_ids)
-        x = tok_embeds
+        x = self.embed_tokens(token_ids) # here x becomes (batch_size, tokens, embed_dim)
+        
+        max_seq = max(start_positions) + num_tokens
+        full_mask = torch.triu(torch.ones(max_seq, max_seq, device=x.device, dtype=torch.bool), diagonal=1)
 
-        num_tokens = x.shape[1]
+        mask_rows = [] # we need to create masks relative to the largest size max_seq
+        for i, sp in enumerate(start_positions):
+            row = full_mask[sp : sp + num_tokens, :max_seq]   # (T, max_seq)
+            mask_rows.append(row)
+        mask = torch.stack(mask_rows, dim=0).unsqueeze(1)
 
-        #TO-DO - come back to this and make it nicer
-        if start_pos is not None:
-            pos_start = start_pos
-        elif cache is not None:
-            pos_start = self.current_pos
-        else:
-            pos_start = 0
+        for layer_idx, block in enumerate(self.layers):
+            layer_caches = [(c.get(layer_idx) if c is not None else None) for c in caches]
+            x, new_layer_caches = block(x, mask, self.cos, self.sin, start_positions, layer_caches)
 
-        pos_end = pos_start + num_tokens
-        mask = torch.triu(torch.ones(pos_end, pos_end, device=x.device, dtype=torch.bool), diagonal=1)[pos_start:pos_end, :pos_end]
-        mask = mask[None, None, :, :]
-
-        for i, block in enumerate(self.layers):
-            blk_cache = cache.get(i) if cache else None
-            x, new_blk_cache = block(x, mask, self.cos, self.sin, start_pos=pos_start, cache=blk_cache)
-            if cache is not None:
-                cache.update(i, new_blk_cache)
-                
-        if cache is not None:
-            self.current_pos += num_tokens
-
+            for i, c in enumerate(caches):
+                if c is not None:
+                    c.update(layer_idx, new_layer_caches[i])
+ 
         x = self.norm(x)
         logits = self.out_head(x.to(torch.bfloat16))
         return logits
