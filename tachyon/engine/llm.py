@@ -37,6 +37,7 @@ class Engine:
         self.model = Llama3Model()  # for now we only have llama
         load_weights(self.model, model_name.split("/")[-1])  # loads in place
         self.model = self.model.to(device)
+        self.model = torch.compile(self.model.to(device))
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
 
         self.pool = Queue()
