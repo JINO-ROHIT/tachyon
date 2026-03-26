@@ -3,7 +3,7 @@ from typing import List, Optional
 import torch
 import torch.nn as nn
 
-from .rope import apply_rope
+from .rope import apply_rope, apply_rope_vectorized
 from tachyon.utils import pad_to
 
 '''
@@ -61,6 +61,9 @@ class GroupedQueryAttention(nn.Module):
         # apply per request (i:i+1) trick is to keep the dim, if we do i, we lose the dim, see if we can vectorize this instead of for loop
         keys = torch.stack([apply_rope(keys[i: i + 1], cos, sin, start_positions[i]) for i in range(batch_size)], dim = 0).squeeze(1)
         queries = torch.stack([apply_rope(queries[i : i + 1], cos, sin, start_positions[i]) for i in range(batch_size)], dim = 0).squeeze(1)
+
+        # keys = apply_rope_vectorized(keys, cos, sin, start_positions)
+        # queries = apply_rope_vectorized(queries, cos, sin, start_positions)
 
         next_caches = []
         keys_list, values_list = [], []
