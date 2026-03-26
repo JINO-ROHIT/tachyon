@@ -57,7 +57,7 @@ python3 benchmark.py
 - [x] write a benchmark script and check latency and throughput.
 - [x] add kv cache.
 - [x] continous batching
-- [ ] test the effect of torch compile 
+- [ ] test the effect of torch compile (open PR, come back to this) 
 - [ ] paged attention
 - [ ] prefix caching
 - [ ] more techniques
