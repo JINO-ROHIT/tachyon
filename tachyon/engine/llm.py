@@ -12,6 +12,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 MAX_BATCH_SIZE = 50  # TO-DO: write a profiler to find optimal size that maximizes gpu util
 
+torch._logging.set_logs(graph_code=True, graph_breaks=True)
 
 @dataclass
 class Request:
@@ -36,8 +37,7 @@ class Engine:
     def __init__(self, model_name: str):
         self.model = Llama3Model()  # for now we only have llama
         load_weights(self.model, model_name.split("/")[-1])  # loads in place
-        self.model = self.model.to(device)
-        self.model = torch.compile(self.model.to(device))
+        self.model = torch.compile(self.model.to(device), fullgraph=True)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
 
         self.pool = Queue()
