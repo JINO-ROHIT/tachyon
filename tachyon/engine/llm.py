@@ -7,29 +7,30 @@ from queue import Queue
 from tachyon.models import Llama3Model
 from tachyon.utils import load_weights
 from tachyon.models.cache import Cache  # lazy import?
+from tachyon.models.paged_attention import Request
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 MAX_BATCH_SIZE = 50  # TO-DO: write a profiler to find optimal size that maximizes gpu util
 
 
-@dataclass
-class Request:
-    id: int = 0
-    prompt: str = ""
-    max_tokens: int = 100
-    temperature: float = 0.1
+# @dataclass
+# class Request:
+#     id: int = 0
+#     prompt: str = ""
+#     max_tokens: int = 100
+#     temperature: float = 0.1
 
-    prompt_tokens: List[int] = field(default_factory=list)
-    tokens: List[int] = field(default_factory=list)    
-    kv_cache: Cache | None = field(default_factory=lambda: Cache(n_layers=16))
+#     prompt_tokens: List[int] = field(default_factory=list)
+#     tokens: List[int] = field(default_factory=list)    
+#     kv_cache: Cache | None = field(default_factory=lambda: Cache(n_layers=16))
 
-    cache_pos: int = 0
-    is_completed: bool = False
-    is_prefill: bool = True
-    use_cache: bool = True
+#     cache_pos: int = 0
+#     is_completed: bool = False
+#     is_prefill: bool = True
+#     use_cache: bool = True
 
-    response: str = None # the actual string decoded response
+#     response: str = None # the actual string decoded response
 
 
 class Engine:

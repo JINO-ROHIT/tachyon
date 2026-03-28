@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 
 from .rope import apply_rope, apply_rope_vectorized
+from .paged_attention import Page, PageTable, BlockManager
 from tachyon.utils import pad_to
 
 '''
