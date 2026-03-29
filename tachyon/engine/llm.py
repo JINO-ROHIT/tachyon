@@ -24,10 +24,10 @@ class Request:
     tokens: List[int] = field(default_factory=list)    
     kv_cache: Cache | None = field(default_factory=lambda: Cache(n_layers=16))
 
-    cache_pos: int = 0
+    cache_pos: int = 0 # keeps track of upto what token position has already been processed
     is_completed: bool = False
     is_prefill: bool = True
-    use_cache: bool = True
+    use_cache: bool = True # to use kv cache or not
 
     response: str = None # the actual string decoded response
 
@@ -48,17 +48,34 @@ class Engine:
         """adds a request in the pool"""
         self.pool.put(request)
 
-    def sample(self, logits, temperature: float = 0.0):
-        """samples from a distribution to get the next token"""
-        if temperature > 0.0:
-            logits = logits / temperature
-            logits = logits - logits.max(dim=-1, keepdim=True).values
-            probs = torch.softmax(logits, dim=-1)
-            next_token = torch.multinomial(probs, num_samples=1)
-        else:
-            next_token = torch.argmax(logits, dim=-1, keepdim=True)
-        return next_token
+    def sample(self, logits, temperatures: torch.Tensor):
+        """
+        logits: (B, vocab_size)
+        temperatures: (B, 1)
+        """
+        temperatures = temperatures.to(dtype=logits.dtype, device=logits.device)
+        mask = temperatures.squeeze(-1) > 0.0
 
+        scaled = logits.clone()
+        scaled[mask] = scaled[mask] / temperatures[mask]
+        scaled[mask] = scaled[mask] - scaled[mask].max(dim=-1, keepdim=True).values
+        probs = torch.softmax(scaled, dim=-1)  # (B, vocab)
+
+        # greedy for zero-temp rows
+        greedy = torch.argmax(logits, dim=-1, keepdim=True)  # (B, 1)
+
+        # sample for nonzero-temp rows
+        sampled = torch.multinomial(probs, num_samples=1)    # (B, 1)
+
+        next_tokens = torch.where(mask.unsqueeze(-1), sampled, greedy)
+        return next_tokens  # (B, 1)
+    
+    def _forward_pass(self, tokens, caches, cache_positions):
+        """does one forward pass of the model and returns the next token"""
+        with torch.no_grad():
+            logits = self.model(tokens, caches=caches, start_positions=cache_positions)
+        return logits[:, -1, :]
+    
     def prefill(self, request: Request):
         """the prefill stage"""
         request.cache_pos = 0
@@ -68,10 +85,9 @@ class Engine:
         if not request.use_cache:
             request.kv_cache = None
 
-        with torch.no_grad():
-            logits = self.model(tokens, caches=[request.kv_cache], start_positions=[0])
-
-        next_token = self.sample(logits[:, -1, :], request.temperature)
+        logits = self._forward_pass(tokens, [request.kv_cache], [request.cache_pos])
+        temps = torch.tensor([[request.temperature]], device=device)
+        next_token = self.sample(logits, temps)  # (1, 1)
         request.tokens.append(next_token.item())
 
         request.cache_pos = len(prompt_tokens)
@@ -83,13 +99,11 @@ class Engine:
         tokens = torch.tensor([[r.tokens[-1]] for r in requests], device=device)
         caches = [r.kv_cache for r in requests]
         start_positions = [r.cache_pos for r in requests]
- 
-        with torch.no_grad():
-            logits = self.model(tokens, caches=caches, start_positions=start_positions)
-        last_logits = logits[:, -1, :]
- 
-        next_tokens = torch.stack([self.sample(last_logits[i:i+1], requests[i].temperature).squeeze() for i in range(len(requests))]) 
- 
+
+        logits = self._forward_pass(tokens, caches, start_positions)
+        temps = torch.tensor([[r.temperature] for r in requests], device=device)  # (B, 1)
+        next_tokens = self.sample(logits, temps) 
+
         for i, request in enumerate(requests):
             request.cache_pos += 1
             tok = next_tokens[i].item()

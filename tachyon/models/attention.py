@@ -3,7 +3,7 @@ from typing import List, Optional
 import torch
 import torch.nn as nn
 
-from .rope import apply_rope, apply_rope_vectorized
+from .rope import apply_rope_vectorized
 from tachyon.utils import pad_to
 
 '''
