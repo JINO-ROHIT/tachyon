@@ -81,16 +81,15 @@ def benchmark_batched(engine, requests):
 
 def run_benchmark(n_requests, model_name="meta-llama/Llama-3.2-1B-Instruct"):
     print(f"Initializing engine with {model_name}...\n")
-    engine = Engine(model_name)
 
     requests = generate_requests(n_requests)
 
+    engine = Engine(model_name)
     benchmark_sequential(engine, requests)
 
     # re-init engine to avoid cache/state effects
     del engine
     engine = Engine(model_name)
-
     benchmark_batched(engine, requests)
 
     print("\nBenchmark complete")

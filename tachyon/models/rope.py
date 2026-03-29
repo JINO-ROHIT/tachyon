@@ -13,16 +13,15 @@ def compute_rope_params(head_dim: int, theta_base: int=10_000, context_length: i
     return cos, sin
 
 
-def apply_rope(x, cos, sin, offset = 0):
+def apply_rope(x, cos, sin, start_positions = 0):
     batch_size, num_heads, seq_len, head_dim = x.shape
     assert head_dim % 2 == 0, "Head dimension must be even"
 
     x1 = x[..., : head_dim // 2]  # first half
     x2 = x[..., head_dim // 2 :]  # second half
 
-    cos = cos[offset: offset + seq_len, :].unsqueeze(0).unsqueeze(0) # (1, 1, seq_len, head_dim)
-    sin = sin[offset: offset + seq_len, :].unsqueeze(0).unsqueeze(0) 
-
+    cos = cos[start_positions: start_positions + seq_len, :].unsqueeze(0).unsqueeze(0) # (1, 1, seq_len, head_dim)
+    sin = sin[start_positions: start_positions + seq_len, :].unsqueeze(0).unsqueeze(0) 
 
     rotated = torch.cat((-x2, x1), dim=-1)
     x_rotated = (x * cos) + (rotated * sin)

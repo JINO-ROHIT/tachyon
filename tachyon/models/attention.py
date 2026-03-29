@@ -59,11 +59,12 @@ class GroupedQueryAttention(nn.Module):
         queries = queries.transpose(1, 2)
 
         # apply per request (i:i+1) trick is to keep the dim, if we do i, we lose the dim, see if we can vectorize this instead of for loop
-        keys = torch.stack([apply_rope(keys[i: i + 1], cos, sin, start_positions[i]) for i in range(batch_size)], dim = 0).squeeze(1)
-        queries = torch.stack([apply_rope(queries[i : i + 1], cos, sin, start_positions[i]) for i in range(batch_size)], dim = 0).squeeze(1)
+        # keys = torch.stack([apply_rope(keys[i: i + 1], cos, sin, start_positions[i]) for i in range(batch_size)], dim = 0).squeeze(1)
+        # queries = torch.stack([apply_rope(queries[i : i + 1], cos, sin, start_positions[i]) for i in range(batch_size)], dim = 0).squeeze(1)
 
-        # keys = apply_rope_vectorized(keys, cos, sin, start_positions)
-        # queries = apply_rope_vectorized(queries, cos, sin, start_positions)
+        # the vectorized version is signnificatly faster for batched stuff but slower for single request due to extra tensors creation overhead
+        keys = apply_rope_vectorized(keys, cos, sin, start_positions)
+        queries = apply_rope_vectorized(queries, cos, sin, start_positions)
 
         next_caches = []
         keys_list, values_list = [], []
