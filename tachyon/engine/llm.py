@@ -11,7 +11,8 @@ from tachyon.models.cache import Cache  # lazy import?
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 MAX_BATCH_SIZE = 50  # TO-DO: write a profiler to find optimal size that maximizes gpu util
-
+MAX_DECODE_BATCH = 50
+MAX_PREFILL_BATCH = 30
 
 @dataclass
 class Request:
@@ -75,23 +76,31 @@ class Engine:
         with torch.no_grad():
             logits = self.model(tokens, caches=caches, start_positions=cache_positions)
         return logits[:, -1, :]
-    
-    def prefill(self, request: Request):
-        """the prefill stage"""
-        request.cache_pos = 0
-        prompt_tokens = self.tokenizer.encode(request.prompt)
-        tokens = torch.tensor(prompt_tokens).unsqueeze(0).to(device)
-        request.prompt_tokens = prompt_tokens
-        if not request.use_cache:
-            request.kv_cache = None
 
-        logits = self._forward_pass(tokens, [request.kv_cache], [request.cache_pos])
-        temps = torch.tensor([[request.temperature]], device=device)
-        next_token = self.sample(logits, temps)  # (1, 1)
-        request.tokens.append(next_token.item())
-
-        request.cache_pos = len(prompt_tokens)
-        request.is_prefill = False
+    def prefill_batch(self, requests: List[Request]):
+        """batched prefill for multiple requests in a single forward pass"""
+        
+        all_tokens = [self.tokenizer.encode(r.prompt) for r in requests]
+        max_len = max(len(t) for t in all_tokens)
+        
+        # pad all to max_len (pad on the left so the last token is always real)
+        pad_id = self.tokenizer.pad_token_id or 0
+        padded = [([pad_id] * (max_len - len(t))) + t for t in all_tokens]
+        tokens = torch.tensor(padded, device=device)  # (B, max_len)
+        
+        # start positions are all 0 since these are fresh requests
+        caches = [r.kv_cache if r.use_cache else None for r in requests]
+        start_positions = [0] * len(requests)
+        
+        logits = self._forward_pass(tokens, caches, start_positions)  # (B, vocab)
+        temps = torch.tensor([[r.temperature] for r in requests], device=device)
+        next_tokens = self.sample(logits, temps)  # (B, 1)
+        
+        for i, request in enumerate(requests):
+            request.prompt_tokens = all_tokens[i]
+            request.tokens.append(next_tokens[i].item())
+            request.cache_pos = max_len  # all requests share the same padded length
+            request.is_prefill = False
     
     def decode_batch(self, requests: List[Request]):
         """the decode step for a batch of requests in a single forward pass."""
@@ -128,11 +137,12 @@ class Engine:
  
         prefill_requests = [r for r in self.current_batch if r.is_prefill]
         decode_requests  = [r for r in self.current_batch if not r.is_prefill]
- 
-        # prefill individually 
-        for request in prefill_requests:
-            self.prefill(request)
- 
+
+        # prefill in smaller batches to not OOM the GPU
+        for i in range(0, len(prefill_requests), MAX_PREFILL_BATCH):
+            chunk = prefill_requests[i : i + MAX_PREFILL_BATCH]
+            self.prefill_batch(chunk)
+
         # decode in one batched forward pass
         if decode_requests:
             self.decode_batch(decode_requests)

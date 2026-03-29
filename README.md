@@ -47,7 +47,7 @@ python3 benchmark.py
 | continuous batching (bs=10) | 30600 | 111.657 s | 274.05 tok/s |
 | continuous batching (bs=30) | 29000 | 89.755 s | 323.10 tok/s |
 | continuous batching (bs=50) | 29800 | 87.442 s | 340.80 tok/s |
-| continuous batching (bs=50) with vectorized rope | 29300 | 70.506 s | 415.57 tok/s |
+| continuous batching (bs=50) with vectorized ops and batched prefill | 30500 | 71.731 s | 425.20 tok/s |
 
 
 ![stats](./assets/stats.png)
