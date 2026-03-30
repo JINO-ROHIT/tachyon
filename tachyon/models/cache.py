@@ -21,6 +21,7 @@ class Cache:
             self.cache[i] = None
 
 
+#TO-DO - implement a trie based data structure, current LRU is expensive
 class PrefixCache:
     """shared cache across requests, stores kv states for token prefixes so we can skip redundant prefill"""
 

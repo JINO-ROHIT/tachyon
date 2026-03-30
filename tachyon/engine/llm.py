@@ -108,9 +108,7 @@ class Engine:
 
     def _prefill_with_cache(self, request: Request):
         """prefill a single request that has a prefix cache hit, skipping redundant prefix computation"""
-        prompt_tokens = self.tokenizer.encode(request.prompt)
-        request.prompt_tokens = prompt_tokens
-
+        prompt_tokens = request.prompt_tokens
         match_len, cached_kv = self.prefix_cache.lookup(prompt_tokens)
 
         # for exact match we trim last position so we can recompute it for logits
@@ -168,14 +166,18 @@ class Engine:
 
         # split prefill into cache hits (handled individually) and misses (batched)
         cache_hits, cache_misses = [], []
-        for r in prefill_requests:
-            if r.use_cache:
-                prompt_tokens = self.tokenizer.encode(r.prompt)
+        for request in prefill_requests:
+            if request.use_cache:
+                prompt_tokens = self.tokenizer.encode(request.prompt)
+                request.prompt_tokens = prompt_tokens  
                 match_len, _ = self.prefix_cache.lookup(prompt_tokens)
-                if match_len > 0:
-                    cache_hits.append(r)
+                match_ratio = match_len / len(prompt_tokens)
+                # why ratio? if we use a len based matching, even if a single token match, we use prefill cache but prefill cache has no batching, so we lose 
+                # throughput
+                if match_ratio > 0.3: # tune this 
+                    cache_hits.append(request)
                     continue
-            cache_misses.append(r)
+            cache_misses.append(request)
 
         for request in cache_hits:
             self._prefill_with_cache(request)
