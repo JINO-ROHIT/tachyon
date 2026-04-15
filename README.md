@@ -39,6 +39,24 @@ for o in outputs:
     print(o)
 ```
 
+### OpenAI compatible server
+
+You can spin up the server and then use the `openai` library to invoke the model as well -
+
+```
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:8000/v1",
+    api_key="anything"
+)
+
+resp = client.chat.completions.create(
+    model="llama-3.2-1b-instruct",
+    messages=[{"role": "user", "content": "Hello"}],
+    stream=False,
+)
+```
 3. benchmark script
 
 ```
@@ -67,6 +85,7 @@ python3 benchmark.py
 - [x] add kv cache.
 - [x] continous batching
 - [x] prefix caching
+- [x] add an openai compatible api server
 - [ ] test the effect of torch compile (open PR, come back to this) 
 - [ ] paged attention
 - [ ] more techniques
