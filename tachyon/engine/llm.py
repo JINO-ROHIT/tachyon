@@ -30,7 +30,7 @@ class Request:
     is_prefill: bool = True
     use_cache: bool = True # to use kv cache or not
 
-    response: str = None # the actual string decoded response
+    response: str = "" # the actual string decoded response
 
 
 class Engine:
@@ -143,9 +143,10 @@ class Engine:
             request.cache_pos += 1
             tok = next_tokens[i].item()
             request.tokens.append(tok)
+            request.response += self.tokenizer.decode(tok)
             if tok == self.tokenizer.eos_token_id or len(request.tokens) >= request.max_tokens:
                 request.is_completed = True
-                request.response = self.tokenizer.decode(request.tokens)
+                #request.response = self.tokenizer.decode(request.tokens)
 
     def _get_next_batch(self):
         self.current_batch = [_req for _req in self.current_batch if not _req.is_completed]  # in the current batch keep the ones not completed

@@ -1,6 +1,7 @@
 ## to-do currently we dont have streaming working
 
 import asyncio
+import json
 import uuid
 import time
 from contextlib import asynccontextmanager
@@ -84,8 +85,8 @@ class ModelList(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     gpu_available: bool
-    gpu_memory_used: Optional[int] = None
-    gpu_memory_total: Optional[int] = None
+    gpu_memory_used: Optional[float] = None
+    gpu_memory_total: Optional[float] = None
 
 
 _engine: Optional[Engine] = None
@@ -108,7 +109,7 @@ def create_engine(model_name: str):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_engine("meta-llama/Llama-3.2-1B-Instruct")
-    yield # before yield run everything, after yield is shutdown part
+    yield  # before yield run everything, after yield is shutdown part
     global _engine
     _engine = None
 
@@ -123,7 +124,7 @@ async def health_check():
     gpu_memory_total = None
 
     if gpu_available:
-        GB = 1024 ** 3
+        GB = 1024**3
 
         gpu_memory_used = torch.cuda.memory_allocated() / GB
         gpu_memory_total = torch.cuda.get_device_properties(0).total_memory / GB
@@ -149,15 +150,46 @@ def messages_to_prompt(messages: List[ChatMessage]) -> str:
     return "\n".join([f"{m.role}: {m.content}" for m in messages])
 
 
+def run_engine_step(engine: Engine, request: EngineRequest):
+    engine.current_batch = [request]
+    if request.is_prefill:
+        engine.prefill_batch([request])
+    else:
+        engine.decode_batch([request])
+    return request.response
+
+
 async def generate_stream(request: EngineRequest, engine: Engine):
+    completion_id = f"chatcmpl-{uuid.uuid4().hex}"
+    created = int(time.time())
+    model = "llama-3.2-1b-instruct"
+    prev_response = ""
+
     while not request.is_completed:
-        engine.current_batch = [request]
-        if request.is_prefill:
-            engine.prefill_batch([request])
-        else:
-            engine.decode_batch([request])
-        yield f"data: {request.tokens[-1]}\n\n"
+        response = await asyncio.to_thread(run_engine_step, engine, request)
+        delta = response[len(prev_response) :]
+        prev_response = response
+        if delta:
+            chunk = {
+                "id": completion_id,
+                "object": "chat.completion.chunk",
+                "created": created,
+                "model": model,
+                "choices": [
+                    {"index": 0, "delta": {"content": delta}, "finish_reason": None}
+                ],
+            }
+            yield f"data: {json.dumps(chunk)}\n\n"
         await asyncio.sleep(0)
+
+    final_chunk = {
+        "id": completion_id,
+        "object": "chat.completion.chunk",
+        "created": created,
+        "model": model,
+        "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+    }
+    yield f"data: {json.dumps(final_chunk)}\n\n"
     yield "data: [DONE]\n\n"
 
 
